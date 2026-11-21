@@ -1,0 +1,2493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WH-QUE4INFA | Serialized Multi-Warehouse Inventory & Transaction System</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- HTML5 QR / Barcode Scanner -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    /* Custom subtle scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    @keyframes pulseBorder {
+      0%, 100% { border-color: #10b981; }
+      50% { border-color: #34d399; }
+    }
+    .scanner-active {
+      animation: pulseBorder 1.5s infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-emerald-100 selection:text-emerald-900">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- Main App Shell -->
+  <div class="min-h-screen flex flex-col lg:flex-row">
+
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="sidebar-backdrop" onclick="toggleSidebar(false)" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 hidden lg:hidden"></div>
+
+    <!-- Left Navigation Sidebar -->
+    <aside id="sidebar" class="fixed lg:sticky top-0 left-0 z-40 h-screen w-72 bg-slate-900 text-slate-100 flex flex-col transition-transform duration-300 -translate-x-full lg:translate-x-0 shrink-0 shadow-xl">
+      <!-- Brand Header -->
+      <div class="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center text-slate-950 font-extrabold shadow-lg shadow-emerald-500/20">
+            <i data-lucide="boxes" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h1 class="font-bold text-base tracking-tight text-white">WH-QUE4INFA</h1>
+            <p class="text-[11px] font-medium text-emerald-400 tracking-wider uppercase">Region SOLZ-A • V4</p>
+          </div>
+        </div>
+        <button onclick="toggleSidebar(false)" class="lg:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="flex-1 overflow-y-auto p-3 space-y-1" id="nav-menu">
+        <p class="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Overview & Stock</p>
+        <button onclick="switchTab('dashboard')" data-tab="dashboard" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors">
+          <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+          <span>Dashboard & Consolidated</span>
+        </button>
+        <button onclick="switchTab('warehouses')" data-tab="warehouses" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors">
+          <i data-lucide="warehouse" class="w-4 h-4"></i>
+          <span>Warehouse Serial Stock</span>
+        </button>
+
+        <p class="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Transactions</p>
+        <button onclick="switchTab('sales')" data-tab="sales" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors">
+          <i data-lucide="shopping-bag" class="w-4 h-4"></i>
+          <span>Sales & DO Validation</span>
+          <span id="badge-pending-do" class="ml-auto text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">0</span>
+        </button>
+        <button onclick="switchTab('iwtf')" data-tab="iwtf" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors">
+          <i data-lucide="truck" class="w-4 h-4"></i>
+          <span>IWTF Transfers</span>
+          <span id="badge-intransit" class="ml-auto text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300">0</span>
+        </button>
+        <button onclick="switchTab('warranty')" data-tab="warranty" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors">
+          <i data-lucide="shield-alert" class="w-4 h-4"></i>
+          <span>Warranty / Replacement</span>
+        </button>
+        <button onclick="switchTab('marketing')" data-tab="marketing" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors">
+          <i data-lucide="megaphone" class="w-4 h-4"></i>
+          <span>Marketing / Promo</span>
+        </button>
+
+        <p class="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Audit & Setup</p>
+        <button onclick="switchTab('hics')" data-tab="hics" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors">
+          <i data-lucide="clipboard-check" class="w-4 h-4"></i>
+          <span>HICS Physical Count</span>
+        </button>
+        <button onclick="switchTab('logs')" data-tab="logs" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors">
+          <i data-lucide="history" class="w-4 h-4"></i>
+          <span>Movement Log & Master</span>
+        </button>
+      </nav>
+
+      <!-- Sidebar Footer Actions -->
+      <div class="p-4 border-t border-slate-800 space-y-2 bg-slate-950/40">
+        <button onclick="openScannerModal({ mode: 'lookup' })" class="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer">
+          <i data-lucide="scan-barcode" class="w-4 h-4"></i>
+          <span>Scan Serial Lookup</span>
+        </button>
+        <div class="flex gap-2">
+          <button onclick="exportAllJSON()" class="flex-1 py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer" title="Backup All Data">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>Backup</span>
+          </button>
+          <label class="flex-1 py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer" title="Restore Backup JSON">
+            <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+            <span>Restore</span>
+            <input type="file" accept=".json" onchange="importAllJSON(event)" class="hidden" />
+          </label>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col min-w-0">
+
+      <!-- Top Header -->
+      <header class="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <button onclick="toggleSidebar(true)" class="lg:hidden p-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100">
+            <i data-lucide="menu" class="w-5 h-5"></i>
+          </button>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[11px] font-bold tracking-wide">HUB: QUE4INFA</span>
+              <span class="hidden sm:inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-semibold">REGION: SOLZ-A</span>
+            </div>
+            <h2 id="page-title" class="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">Dashboard & Consolidated Inventory</h2>
+          </div>
+        </div>
+
+        <!-- Global Quick Serial Search & Scan -->
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <div class="relative flex-1 sm:w-72">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input
+              type="text"
+              id="global-serial-search"
+              onkeydown="if(event.key==='Enter') lookupSerial(this.value)"
+              placeholder="Quick Serial # Lookup..."
+              class="w-full pl-9 pr-3 py-2 text-sm bg-slate-100 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+            />
+          </div>
+          <button onclick="lookupSerial(document.getElementById('global-serial-search').value)" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium transition-colors cursor-pointer">
+            Find
+          </button>
+          <button onclick="openScannerModal({ mode: 'lookup' })" class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer" title="Scan Barcode/QR">
+            <i data-lucide="qr-code" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Dynamic Tab Views Container -->
+      <main class="flex-1 p-4 sm:p-6 max-w-[1600px] w-full mx-auto space-y-6">
+
+        <!-- ==================== 1. DASHBOARD & CONSOLIDATED ==================== -->
+        <section id="view-dashboard" class="tab-view space-y-6">
+          <!-- KPI Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4" id="dashboard-kpis"></div>
+
+          <!-- Warehouse Quick Cards -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div>
+                <h3 class="font-bold text-slate-900 text-base">Available Units per Warehouse</h3>
+                <p class="text-xs text-slate-500">Live count of serialized units ready for dispatch or transfer</p>
+              </div>
+              <button onclick="openStockInModal()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs cursor-pointer">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                <span>Stock-In Serials</span>
+              </button>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3" id="warehouse-summary-cards"></div>
+          </div>
+
+          <!-- Consolidated Inventory Matrix Table -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div class="p-5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 class="font-bold text-slate-900 text-base">Consolidated Serial Inventory Matrix</h3>
+                <p class="text-xs text-slate-500">Real-time available stock breakdown across all 7 warehouses per SKU Code</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <input type="text" id="consolidated-filter" oninput="renderConsolidatedTable()" placeholder="Filter SKU..." class="px-3 py-1.5 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                <button onclick="exportConsolidatedCSV()" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                  <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
+                  <span>Export CSV</span>
+                </button>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
+                    <th class="py-3 px-4 sticky left-0 bg-slate-50 z-10">SKU Code</th>
+                    <th class="py-3 px-3 text-center">WH1 HUB</th>
+                    <th class="py-3 px-3 text-center">WH2 POLILIO</th>
+                    <th class="py-3 px-3 text-center">WH3 PANUKULAN</th>
+                    <th class="py-3 px-3 text-center">WH4 JENECA</th>
+                    <th class="py-3 px-3 text-center">WH5</th>
+                    <th class="py-3 px-3 text-center">WH6</th>
+                    <th class="py-3 px-3 text-center">WH7</th>
+                    <th class="py-3 px-4 text-right bg-emerald-50/70 text-emerald-900 font-bold">Total Avail</th>
+                  </tr>
+                </thead>
+                <tbody id="consolidated-tbody" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== 2. WAREHOUSE SERIAL MONITORING ==================== -->
+        <section id="view-warehouses" class="tab-view hidden space-y-6">
+          <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 class="font-bold text-slate-900 text-base">Serialized Unit Monitoring</h3>
+                <p class="text-xs text-slate-500">Track individual serial numbers, current location, and lifecycle status</p>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <label class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                  <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                  <span>Import Serials CSV</span>
+                  <input type="file" accept=".csv" onchange="importSerialsCSV(event)" class="hidden" />
+                </label>
+                <button onclick="exportSerialsCSV()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                  <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                  <span>Export CSV</span>
+                </button>
+                <button onclick="openStockInModal()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs cursor-pointer">
+                  <i data-lucide="plus" class="w-4 h-4"></i>
+                  <span>Inbound / Stock-In</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+              <select id="wh-filter-location" onchange="renderWarehouseSerials()" class="px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <option value="ALL">All Warehouses</option>
+              </select>
+              <select id="wh-filter-sku" onchange="renderWarehouseSerials()" class="px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <option value="ALL">All SKU Codes</option>
+              </select>
+              <select id="wh-filter-status" onchange="renderWarehouseSerials()" class="px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <option value="AVAILABLE">Status: AVAILABLE Only</option>
+                <option value="ALL">All Statuses</option>
+                <option value="SOLD">Status: SOLD</option>
+                <option value="IN TRANSIT">Status: IN TRANSIT</option>
+                <option value="DEFECTIVE">Status: DEFECTIVE</option>
+                <option value="MARKETING">Status: MARKETING</option>
+              </select>
+              <div class="relative">
+                <input type="text" id="wh-filter-search" oninput="renderWarehouseSerials()" placeholder="Search Serial #..." class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Serials Table -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
+                    <th class="py-3 px-4">Serial Number</th>
+                    <th class="py-3 px-4">SKU Code</th>
+                    <th class="py-3 px-4">Current Warehouse</th>
+                    <th class="py-3 px-4">Status</th>
+                    <th class="py-3 px-4">Date Added</th>
+                    <th class="py-3 px-4">Last Ref / Remarks</th>
+                    <th class="py-3 px-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="warehouse-serials-tbody" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== 3. SALES & DO VALIDATION ==================== -->
+        <section id="view-sales" class="tab-view hidden space-y-6">
+          <!-- Sales Entry Form -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="font-bold text-slate-900 text-base">Record Sales & DO Validation</h3>
+                <p class="text-xs text-slate-500">Automatically deducts serial from warehouse stock and computes DO KPI compliance</p>
+              </div>
+              <button type="button" onclick="openScannerModal({ mode: 'single', targetInputId: 'sale-serial', onScanCallback: autoFillSaleSkuFromSerial })" class="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="scan-barcode" class="w-4 h-4"></i>
+                <span>Scan Serial</span>
+              </button>
+            </div>
+
+            <form onsubmit="handleAddSale(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 text-xs">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Sale Date *</label>
+                <input type="date" id="sale-date" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">SKU Code *</label>
+                <select id="sale-sku" onchange="populateAvailableSerialsDropdown('sale-serial', this.value)" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"></select>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Serial # (Available Stock) *</label>
+                <input list="sale-serial-list" id="sale-serial" onchange="autoFillSaleSkuFromSerial(this.value)" required placeholder="Select or scan serial..." class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+                <datalist id="sale-serial-list"></datalist>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">DR # *</label>
+                <input type="text" id="sale-dr" required placeholder="e.g. DR0316855" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">SO #</label>
+                <input type="text" id="sale-so" placeholder="e.g. SO-1024" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Solarista (Sales Agent) *</label>
+                <select id="sale-solarista" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"></select>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Client Name *</label>
+                <input type="text" id="sale-client" required placeholder="FULL NAME" class="w-full px-3 py-2 border border-slate-200 rounded-xl uppercase focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Branch Code *</label>
+                <select id="sale-branch" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"></select>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Validation Status *</label>
+                <select id="sale-status" onchange="toggleSaleValidatedDate()" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                  <option value="PENDING">PENDING</option>
+                  <option value="DONE">DONE</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Date D.O Validated</label>
+                <input type="date" id="sale-validated-date" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+              </div>
+              <div class="sm:col-span-2 flex items-end gap-2">
+                <div class="flex-1">
+                  <label class="block font-semibold text-slate-700 mb-1">Remarks</label>
+                  <input type="text" id="sale-remarks" placeholder="Optional notes..." class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+                </div>
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs transition-colors cursor-pointer shrink-0">
+                  Save Sale
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Solarista DO Validation Summary -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+            <h3 class="font-bold text-slate-900 text-sm mb-3">Solarista DO Validation Performance Summary</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" id="solarista-summary-cards"></div>
+          </div>
+
+          <!-- Sales Records Table -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div class="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+              <h3 class="font-bold text-slate-900 text-sm">Sales Transaction Ledger</h3>
+              <button onclick="exportTableCSV('sales')" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Export Sales CSV</span>
+              </button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
+                    <th class="py-3 px-3">Date / Wk</th>
+                    <th class="py-3 px-3">SKU Code</th>
+                    <th class="py-3 px-3">Serial #</th>
+                    <th class="py-3 px-3">DR / SO #</th>
+                    <th class="py-3 px-3">Solarista</th>
+                    <th class="py-3 px-3">Client & Branch</th>
+                    <th class="py-3 px-3">Validation</th>
+                    <th class="py-3 px-3 text-center">KPI / DO</th>
+                    <th class="py-3 px-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="sales-tbody" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== 4. IWTF (INTER-WAREHOUSE TRANSFER) ==================== -->
+        <section id="view-iwtf" class="tab-view hidden space-y-6">
+          <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="font-bold text-slate-900 text-base">Record Inter-Warehouse Transfer (IWTF)</h3>
+                <p class="text-xs text-slate-500">Moves serial numbers between warehouses. Marking RECEIVED updates destination stock immediately.</p>
+              </div>
+              <button type="button" onclick="openScannerModal({ mode: 'single', targetInputId: 'iwtf-serial', onScanCallback: autoFillIwtfFromSerial })" class="px-3.5 py-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="scan-barcode" class="w-4 h-4"></i>
+                <span>Scan Serial</span>
+              </button>
+            </div>
+
+            <form onsubmit="handleAddIWTF(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 text-xs">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Date Transfer *</label>
+                <input type="date" id="iwtf-date" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">IWTF # *</label>
+                <input type="text" id="iwtf-number" required placeholder="e.g. IWTF-2026-089" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">RR #</label>
+                <input type="text" id="iwtf-rr" placeholder="e.g. RR-4410" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Logtech / Courier</label>
+                <input type="text" id="iwtf-logtech" placeholder="Driver / Sea Freight" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">From Warehouse *</label>
+                <select id="iwtf-from" onchange="refreshIwtfSerialList()" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none"></select>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">To Warehouse *</label>
+                <select id="iwtf-to" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none"></select>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">SKU Code *</label>
+                <select id="iwtf-sku" onchange="refreshIwtfSerialList()" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none"></select>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Serial # *</label>
+                <input list="iwtf-serial-list" id="iwtf-serial" onchange="autoFillIwtfFromSerial(this.value)" required placeholder="Select or scan serial..." class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                <datalist id="iwtf-serial-list"></datalist>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Transfer Status *</label>
+                <select id="iwtf-status" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                  <option value="IN TRANSIT">IN TRANSIT</option>
+                  <option value="RECEIVED">RECEIVED</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Date Received</label>
+                <input type="date" id="iwtf-received-date" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+              </div>
+              <div class="sm:col-span-2 flex items-end gap-2">
+                <div class="flex-1">
+                  <label class="block font-semibold text-slate-700 mb-1">Remarks</label>
+                  <input type="text" id="iwtf-remarks" placeholder="Transfer notes..." class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                </div>
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-xs transition-colors cursor-pointer shrink-0">
+                  Save IWTF
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- IWTF Table -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div class="p-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 class="font-bold text-slate-900 text-sm">Inter-Warehouse Transfer Records</h3>
+              <button onclick="exportTableCSV('iwtf')" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Export IWTF CSV</span>
+              </button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
+                    <th class="py-3 px-3">Transfer Date</th>
+                    <th class="py-3 px-3">IWTF / RR #</th>
+                    <th class="py-3 px-3">SKU Code</th>
+                    <th class="py-3 px-3">Serial #</th>
+                    <th class="py-3 px-3">Route (From → To)</th>
+                    <th class="py-3 px-3">Logtech</th>
+                    <th class="py-3 px-3">Status</th>
+                    <th class="py-3 px-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="iwtf-tbody" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== 5. WARRANTY / REPLACEMENT ==================== -->
+        <section id="view-warranty" class="tab-view hidden space-y-6">
+          <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="font-bold text-slate-900 text-base">Record Warranty / Unit Replacement</h3>
+                <p class="text-xs text-slate-500">Logs defective unit as RMA/DEFECTIVE and deducts replacement serial from available stock</p>
+              </div>
+              <button type="button" onclick="openScannerModal({ mode: 'single', targetInputId: 'war-rep-serial', onScanCallback: autoFillWarrantySku })" class="px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100 text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="scan-barcode" class="w-4 h-4"></i>
+                <span>Scan Replacement Serial</span>
+              </button>
+            </div>
+
+            <form onsubmit="handleAddWarranty(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 text-xs">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Date CST Open *</label>
+                <input type="date" id="war-cst-date" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Date Purchase</label>
+                <input type="date" id="war-purchase-date" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">CST # *</label>
+                <input type="text" id="war-cst" required placeholder="e.g. CST-CBINFA1-2026-002" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">SKU Code *</label>
+                <select id="war-sku" onchange="populateAvailableSerialsDropdown('war-rep-serial', this.value)" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"></select>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Defective Serial # *</label>
+                <input type="text" id="war-def-serial" required placeholder="Returned defective serial" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Replacement Serial # *</label>
+                <input list="war-rep-serial-list" id="war-rep-serial" onchange="autoFillWarrantySku(this.value)" required placeholder="Pick/scan replacement stock..." class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none" />
+                <datalist id="war-rep-serial-list"></datalist>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Solarista *</label>
+                <select id="war-solarista" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"></select>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Ref Docs</label>
+                <input type="text" id="war-ref" placeholder="RMA / Service Form #" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Client Name *</label>
+                <input type="text" id="war-client" required placeholder="CLIENT FULL NAME" class="w-full px-3 py-2 border border-slate-200 rounded-xl uppercase focus:ring-2 focus:ring-amber-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Branch Code *</label>
+                <select id="war-branch" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"></select>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Date Replace</label>
+                <input type="date" id="war-replace-date" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none" />
+              </div>
+              <div class="flex items-end gap-2">
+                <div class="flex-1">
+                  <label class="block font-semibold text-slate-700 mb-1">Status</label>
+                  <select id="war-status" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    <option value="REPLACED">REPLACED</option>
+                    <option value="OPEN">OPEN</option>
+                  </select>
+                </div>
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold shadow-xs transition-colors cursor-pointer shrink-0">
+                  Save CST
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Warranty Table -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div class="p-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 class="font-bold text-slate-900 text-sm">Warranty & Replacement Log</h3>
+              <button onclick="exportTableCSV('warranty')" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Export Warranty CSV</span>
+              </button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
+                    <th class="py-3 px-3">CST Date / #</th>
+                    <th class="py-3 px-3">SKU Code</th>
+                    <th class="py-3 px-3">Defective Serial</th>
+                    <th class="py-3 px-3">Replacement Serial</th>
+                    <th class="py-3 px-3">Client & Branch</th>
+                    <th class="py-3 px-3">Solarista</th>
+                    <th class="py-3 px-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="warranty-tbody" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== 6. MARKETING / PROMO ISSUANCE ==================== -->
+        <section id="view-marketing" class="tab-view hidden space-y-6">
+          <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="font-bold text-slate-900 text-base">Marketing / Promo / Demo Issuance</h3>
+                <p class="text-xs text-slate-500">Record non-sale unit releases (IAF) and deduct from available warehouse inventory</p>
+              </div>
+              <button type="button" onclick="openScannerModal({ mode: 'single', targetInputId: 'mkt-serial', onScanCallback: autoFillMktSku })" class="px-3.5 py-2 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 hover:bg-purple-100 text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="scan-barcode" class="w-4 h-4"></i>
+                <span>Scan Serial</span>
+              </button>
+            </div>
+
+            <form onsubmit="handleAddMarketing(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 text-xs">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Date *</label>
+                <input type="date" id="mkt-date" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">IAF # *</label>
+                <input type="text" id="mkt-iaf" required placeholder="e.g. IAF-2026-014" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Ref Docs</label>
+                <input type="text" id="mkt-ref" placeholder="Promo Memo / Event Ref" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">SKU Code *</label>
+                <select id="mkt-sku" onchange="populateAvailableSerialsDropdown('mkt-serial', this.value)" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none"></select>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Serial # *</label>
+                <input list="mkt-serial-list" id="mkt-serial" onchange="autoFillMktSku(this.value)" required placeholder="Select or scan serial..." class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none" />
+                <datalist id="mkt-serial-list"></datalist>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Person In-Charge *</label>
+                <input type="text" id="mkt-pic" required placeholder="Officer / Coordinator" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none" />
+              </div>
+              <div class="sm:col-span-2 flex items-end gap-2">
+                <div class="flex-1">
+                  <label class="block font-semibold text-slate-700 mb-1">Remarks / Purpose</label>
+                  <input type="text" id="mkt-remarks" placeholder="Barangay Demo / Raffle / Display..." class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none" />
+                </div>
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-xs transition-colors cursor-pointer shrink-0">
+                  Save Issuance
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div class="p-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 class="font-bold text-slate-900 text-sm">Marketing & Promo Releases</h3>
+              <button onclick="exportTableCSV('marketing')" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Export Marketing CSV</span>
+              </button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
+                    <th class="py-3 px-4">Date</th>
+                    <th class="py-3 px-4">IAF #</th>
+                    <th class="py-3 px-4">SKU Code</th>
+                    <th class="py-3 px-4">Serial #</th>
+                    <th class="py-3 px-4">Person In-Charge</th>
+                    <th class="py-3 px-4">Ref Docs & Remarks</th>
+                  </tr>
+                </thead>
+                <tbody id="marketing-tbody" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== 7. HICS PHYSICAL COUNT RECONCILIATION ==================== -->
+        <section id="view-hics" class="tab-view hidden space-y-6">
+          <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h3 class="font-bold text-slate-900 text-base">HICS Physical Inventory Count & Reconciliation</h3>
+              <p class="text-xs text-slate-500">Compare live System End Inventory (END INV) against Physical Warehouse Count (ACTUAL COUNT)</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button onclick="openScannerModal({ mode: 'hics-count' })" class="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="scan-barcode" class="w-4 h-4"></i>
+                <span>Scan-to-Count Audit</span>
+              </button>
+              <button onclick="syncHicsToSystem()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer">
+                Match All to System
+              </button>
+              <button onclick="exportHicsCSV()" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Export HICS Report</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
+                    <th class="py-3 px-4">Product Name</th>
+                    <th class="py-3 px-4">SKU Code</th>
+                    <th class="py-3 px-4 text-center">System END INV</th>
+                    <th class="py-3 px-4 text-center w-36">Actual Count</th>
+                    <th class="py-3 px-4 text-center">Variance</th>
+                    <th class="py-3 px-4 text-center">Remarks</th>
+                  </tr>
+                </thead>
+                <tbody id="hics-tbody" class="divide-y divide-slate-100"></tbody>
+                <tfoot id="hics-tfoot" class="bg-slate-100 font-bold text-slate-900 border-t-2 border-slate-300"></tfoot>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== 8. MOVEMENT LOG & MASTER DATA ==================== -->
+        <section id="view-logs" class="tab-view hidden space-y-6">
+          <!-- Movement Log -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div class="p-5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 class="font-bold text-slate-900 text-base">Automated Serial Movement Audit Log</h3>
+                <p class="text-xs text-slate-500">Every inbound, sale, IWTF transfer, warranty swap, and marketing release is logged chronologically</p>
+              </div>
+              <button onclick="exportTableCSV('logs')" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Export Movement Log</span>
+              </button>
+            </div>
+            <div class="overflow-x-auto max-h-[420px]">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead class="sticky top-0 bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
+                  <tr>
+                    <th class="py-3 px-4">Timestamp</th>
+                    <th class="py-3 px-4">Movement Type</th>
+                    <th class="py-3 px-4">SKU Code</th>
+                    <th class="py-3 px-4">Serial Number</th>
+                    <th class="py-3 px-4">From</th>
+                    <th class="py-3 px-4">To</th>
+                    <th class="py-3 px-4">Source / Ref #</th>
+                  </tr>
+                </thead>
+                <tbody id="logs-tbody" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Master Data Manager -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Add SKU -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
+              <h4 class="font-bold text-slate-900 text-sm">Add New SKU Code</h4>
+              <input type="text" id="new-sku-code" placeholder="e.g. [SKH100] SUNKING 100" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl" />
+              <input type="text" id="new-sku-name" placeholder="Product Name (for HICS)" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl" />
+              <button onclick="addMasterItem('sku')" class="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold cursor-pointer">Add SKU</button>
+            </div>
+
+            <!-- Add Solarista -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
+              <h4 class="font-bold text-slate-900 text-sm">Add Solarista (Agent)</h4>
+              <input type="text" id="new-solarista-name" placeholder="FULL NAME" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl uppercase" />
+              <button onclick="addMasterItem('solarista')" class="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold cursor-pointer">Add Solarista</button>
+            </div>
+
+            <!-- Add Branch / Reset -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
+              <h4 class="font-bold text-slate-900 text-sm">Add Branch Code / System Reset</h4>
+              <div class="flex gap-2">
+                <input type="text" id="new-branch-code" placeholder="e.g. CAPOL4" class="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-xl uppercase" />
+                <button onclick="addMasterItem('branch')" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold cursor-pointer">Add</button>
+              </div>
+              <div class="pt-2 border-t border-slate-100">
+                <button onclick="confirmResetSeedData()" class="w-full py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold cursor-pointer">
+                  Reset System to Initial Seed Data
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: INBOUND / STOCK-IN SERIALS ==================== -->
+  <div id="stockin-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-slate-900 text-base">Inbound / Stock-In Serial Numbers</h3>
+          <p class="text-xs text-slate-500">Scan or paste one serial number per line</p>
+        </div>
+        <button onclick="closeStockInModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Destination Warehouse *</label>
+            <select id="stockin-warehouse" class="w-full px-3 py-2 border border-slate-200 rounded-xl"></select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">SKU Code *</label>
+            <select id="stockin-sku" class="w-full px-3 py-2 border border-slate-200 rounded-xl"></select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Source Ref / DR / RR #</label>
+          <input type="text" id="stockin-ref" placeholder="e.g. INBOUND-HUB-2026-11" class="w-full px-3 py-2 border border-slate-200 rounded-xl" />
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="font-semibold text-slate-700">Serial Numbers (1 per line) *</label>
+            <button type="button" onclick="openScannerModal({ mode: 'batch', targetTextareaId: 'stockin-serials' })" class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold flex items-center gap-1 cursor-pointer">
+              <i data-lucide="scan-barcode" class="w-3.5 h-3.5"></i>
+              <span>Batch Camera Scan</span>
+            </button>
+          </div>
+          <textarea id="stockin-serials" rows="5" placeholder="Scan with USB scanner or paste serials here...&#10;84012629307899&#10;84012629307900" class="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"></textarea>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeStockInModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer">Cancel</button>
+        <button onclick="processStockIn()" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs cursor-pointer">Add Serials to Stock</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: BARCODE / QR SCANNER ==================== -->
+  <div id="scanner-modal" class="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-200 space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+            <i data-lucide="scan-barcode" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 id="scanner-title" class="font-bold text-slate-900 text-sm">Barcode & QR Serial Scanner</h3>
+            <p id="scanner-subtitle" class="text-[11px] text-slate-500">Point camera at box serial barcode or use USB scanner</p>
+          </div>
+        </div>
+        <button onclick="closeScannerModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Camera Viewport -->
+      <div id="qr-reader-wrapper" class="relative rounded-xl overflow-hidden bg-slate-950 border-2 border-emerald-500 scanner-active min-h-[220px] flex items-center justify-center">
+        <div id="qr-reader" class="w-full"></div>
+        <div id="camera-fallback-msg" class="hidden p-4 text-center text-xs text-slate-300 space-y-2">
+          <i data-lucide="camera-off" class="w-8 h-8 mx-auto text-slate-400"></i>
+          <p>Camera unavailable or permission blocked. You can still use a <strong>USB/Bluetooth Barcode Scanner</strong> or type below:</p>
+        </div>
+      </div>
+
+      <!-- Manual / USB Handheld Fallback Input -->
+      <div class="space-y-1.5">
+        <label class="block text-[11px] font-semibold text-slate-600">USB Scanner / Manual Serial Input (Press Enter)</label>
+        <div class="flex gap-2">
+          <input type="text" id="manual-scan-input" onkeydown="if(event.key==='Enter'){ event.preventDefault(); handleScannedCode(this.value); this.value=''; }" placeholder="Scan or type serial & hit Enter..." class="flex-1 px-3 py-2 text-xs font-mono border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+          <button type="button" onclick="const el=document.getElementById('manual-scan-input'); handleScannedCode(el.value); el.value='';" class="px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold cursor-pointer">
+            Capture
+          </button>
+        </div>
+      </div>
+
+      <!-- Batch Scan Counter & Preview -->
+      <div id="batch-scan-panel" class="hidden bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2">
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-semibold text-slate-700">Scanned Batch (<span id="batch-scan-count">0</span>)</span>
+          <button type="button" onclick="clearBatchScans()" class="text-[11px] text-rose-600 hover:underline">Clear</button>
+        </div>
+        <div id="batch-scan-list" class="max-h-24 overflow-y-auto font-mono text-[11px] text-slate-600 space-y-1"></div>
+      </div>
+
+      <div class="flex justify-end">
+        <button onclick="closeScannerModal()" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold cursor-pointer">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: SERIAL LOOKUP RESULT ==================== -->
+  <div id="lookup-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-slate-900 text-base">Serial Number Traceability</h3>
+        <button onclick="document.getElementById('lookup-modal').classList.add('hidden'); document.getElementById('lookup-modal').classList.remove('flex');" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div id="lookup-modal-body" class="space-y-3 text-xs"></div>
+    </div>
+  </div>
+
+  <!-- ==================== CONFIRMATION DIALOG (NO alert/confirm) ==================== -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 space-y-4">
+      <h3 id="confirm-title" class="font-bold text-slate-900 text-base">Confirm Action</h3>
+      <p id="confirm-message" class="text-xs text-slate-600"></p>
+      <div class="flex justify-end gap-2">
+        <button onclick="closeConfirmModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer">Cancel</button>
+        <button id="confirm-yes-btn" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold cursor-pointer">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. INITIAL SEED DATA (Modeled after WH-QUE4INFA V4 CSV Files)
+    // =========================================================================
+    const STORAGE_KEY = 'WH_QUE4INFA_INVENTORY_V4_DATA';
+
+    const INITIAL_SEED_DATA = {
+      warehouses: [
+        "WAREHOUSE 1 - HUB",
+        "WAREHOUSE 2 - POLILIO",
+        "WAREHOUSE 3 - PANUKULAN",
+        "WAREHOUSE 4 - JENECA",
+        "WAREHOUSE 5",
+        "WAREHOUSE 6",
+        "WAREHOUSE 7"
+      ],
+      skus: [
+        { code: "[BLCKS11] BL SAFI", product: "BIOLITE JIKO SAFI" },
+        { code: "[BLHS411B] BLH620+", product: "BIOLITE HOME 620+" },
+        { code: "[BLHS421] BLH1025", product: "BIOLITE HOME 1025" },
+        { code: "[BLHS421] BLH1025/QA", product: "BIOLITE HOME 1025 QA" },
+        { code: "[BLHS431] BLH1550", product: "BIOLITE HOME 1550" },
+        { code: "[BLLPO11] BLFLXLT", product: "BIOLITE FLEXT LIGHT" },
+        { code: "[OVDSF11] OVTABLEFAN", product: "OMNI TABLE FAN" },
+        { code: "[OVGNRADIO] OMNI GENUINE RADIO", product: "OMNI GENUINE RADIO" },
+        { code: "[OVHS221] OVLH420XR", product: "OMNI LUMEN HOME 420XR" },
+        { code: "[OVHS311] OVM400X", product: "OMNI M400X" },
+        { code: "[OVHS321] OVLH630XR", product: "OMNI LUMEN HOME 630XR" },
+        { code: "[OVHS421] OVLH1030XR", product: "OMNI LUMIN HOME 1030 XR" },
+        { code: "[OVLPC11] OVL190", product: "OMNI L190" },
+        { code: "[OVLPR11] OVLSONIC", product: "OMNI LUMEN SONIC" },
+        { code: "[OVMNTRCH] OMNI MINI TORCH KEYCHAIN", product: "OMNI MINI TORCH" },
+        { code: "[OVSTF22] OVSTANDFAN2", product: "OMNI STANDFAN2" },
+        { code: "[OVSTNDFAN] OMNI STAND FAN", product: "OMNI STAND FAN" },
+        { code: "[SKDSF13] SKDESKFAN", product: "SUNKING DESK FAN16" },
+        { code: "[SKH60] SUNKING HOME 60", product: "SUNKING HOME 60" },
+        { code: "[SKHS211] SKH40+", product: "SUNKING HOME 40 PLUS" },
+        { code: "[SKHS331] SKH200X", product: "SUNKING HOME 200X" },
+        { code: "[SKHS341] SKH+", product: "SUNKING HOME PLUS" },
+        { code: "[SKHS431] SKH+PRO", product: "SUNKING HOME PLUS PRO EB" },
+        { code: "[SKLPC11] SKTL", product: "SUNKING TL" },
+        { code: "[SKLPC24] SKPRO400", product: "SUNKING PRO 400" },
+        { code: "[SKLPO13] SKPICO+DUAL", product: "SUNKING PICO+ DUAL" },
+        { code: "[SKLPR11] SKBOOM", product: "SUNKING BOOM" },
+        { code: "[SKLPR12] SKBOOM2", product: "SUNKING BOOM 2" }
+      ],
+      branches: [
+        "ASHI QNB", "ASHI QRB", "CABUR1", "CABUR2", "CAINFA", "CAPAN1", "CAPAN2",
+        "CAPOL1", "CAPOL2", "CAPOL3", "CAPTN", "CAREAL", "CBINFA1", "CBINFA2",
+        "CBINFA3", "CBINFA4", "CBINFA5", "CBNAKAR1", "CBNAKAR2", "CBREAL1", "CBREAL2",
+        "QNB", "QRB"
+      ],
+      solaristas: [
+        "DANILO RENDAL",
+        "MA.JOAN GARILLO",
+        "JESSICA PARDALES",
+        "JEDIDIA GEMUEL DATILES",
+        "JENECA ANDRIE FERNANDEZ",
+        "CEEJAY REVILLAME",
+        "ASUNCION ZHAJAIRA JANE",
+        "CHARMIANE ESPEJO"
+      ],
+      serials: [
+        // WAREHOUSE 1 - HUB
+        { serial: "84012629307836", sku: "[SKDSF13] SKDESKFAN", warehouse: "WAREHOUSE 1 - HUB", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "84012629321035", sku: "[SKDSF13] SKDESKFAN", warehouse: "WAREHOUSE 1 - HUB", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "84012630017739", sku: "[SKDSF13] SKDESKFAN", warehouse: "WAREHOUSE 1 - HUB", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "84012629466038", sku: "[SKDSF13] SKDESKFAN", warehouse: "WAREHOUSE 1 - HUB", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "84012629682436", sku: "[SKDSF13] SKDESKFAN", warehouse: "WAREHOUSE 1 - HUB", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "84012629502832", sku: "[SKDSF13] SKDESKFAN", warehouse: "WAREHOUSE 1 - HUB", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "84012629918434", sku: "[SKDSF13] SKDESKFAN", warehouse: "WAREHOUSE 1 - HUB", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "84012629916032", sku: "[SKDSF13] SKDESKFAN", warehouse: "WAREHOUSE 1 - HUB", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "84012629916735", sku: "[SKDSF13] SKDESKFAN", warehouse: "WAREHOUSE 1 - HUB", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "84012629895038", sku: "[SKDSF13] SKDESKFAN", warehouse: "WAREHOUSE 1 - HUB", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+
+        // WAREHOUSE 2 - POLILIO
+        { serial: "ECO01065133", sku: "[BLCKS11] BL SAFI", warehouse: "WAREHOUSE 2 - POLILIO", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "BINTF260402097", sku: "[OVDSF11] OVTABLEFAN", warehouse: "WAREHOUSE 2 - POLILIO", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "BINTF260603222", sku: "[OVDSF11] OVTABLEFAN", warehouse: "WAREHOUSE 2 - POLILIO", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "HS202401012243", sku: "[OVHS221] OVLH420XR", warehouse: "WAREHOUSE 2 - POLILIO", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "HS202401012249", sku: "[OVHS221] OVLH420XR", warehouse: "WAREHOUSE 2 - POLILIO", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "HS202306008051", sku: "[OVHS321] OVLH630XR", warehouse: "WAREHOUSE 2 - POLILIO", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "HS202306008055", sku: "[OVHS321] OVLH630XR", warehouse: "WAREHOUSE 2 - POLILIO", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "L1902401000358", sku: "[OVLPR11] OVLSONIC", warehouse: "WAREHOUSE 2 - POLILIO", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "BinSF2512000458", sku: "[OVSTF22] OVSTANDFAN2", warehouse: "WAREHOUSE 2 - POLILIO", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "BinSF2602000831", sku: "[OVSTF22] OVSTANDFAN2", warehouse: "WAREHOUSE 2 - POLILIO", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "84004785760729", sku: "[SKDSF13] SKDESKFAN", warehouse: "WAREHOUSE 2 - POLILIO", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "84008339075236", sku: "[SKDSF13] SKDESKFAN", warehouse: "WAREHOUSE 2 - POLILIO", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "4170891000532", sku: "[SKHS211] SKH40+", warehouse: "WAREHOUSE 2 - POLILIO", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "42944350878237", sku: "[SKHS431] SKH+PRO", warehouse: "WAREHOUSE 2 - POLILIO", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "3344716037620", sku: "[SKLPC24] SKPRO400", warehouse: "WAREHOUSE 2 - POLILIO", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "3213412007745", sku: "[SKLPR11] SKBOOM", warehouse: "WAREHOUSE 2 - POLILIO", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+
+        // WAREHOUSE 3 - PANUKULAN
+        { serial: "BINTF260701017", sku: "[OVDSF11] OVTABLEFAN", warehouse: "WAREHOUSE 3 - PANUKULAN", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "BINTF260701126", sku: "[OVDSF11] OVTABLEFAN", warehouse: "WAREHOUSE 3 - PANUKULAN", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "L1902508001415", sku: "[OVLPR11] OVLSONIC", warehouse: "WAREHOUSE 3 - PANUKULAN", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "3347868002486", sku: "[SKLPC24] SKPRO400", warehouse: "WAREHOUSE 3 - PANUKULAN", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "255062820", sku: "[BLHS421] BLH1025/QA", warehouse: "WAREHOUSE 3 - PANUKULAN", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+
+        // WAREHOUSE 4 - JENECA
+        { serial: "ECO01105045", sku: "[BLCKS11] BL SAFI", warehouse: "WAREHOUSE 4 - JENECA", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "938564325", sku: "[BLHS431] BLH1550", warehouse: "WAREHOUSE 4 - JENECA", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "BINTF260601232", sku: "[OVDSF11] OVTABLEFAN", warehouse: "WAREHOUSE 4 - JENECA", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "BINTF260601431", sku: "[OVDSF11] OVTABLEFAN", warehouse: "WAREHOUSE 4 - JENECA", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "HS202509002742", sku: "[OVHS221] OVLH420XR", warehouse: "WAREHOUSE 4 - JENECA", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+        { serial: "84012629780537", sku: "[SKDSF13] SKDESKFAN", warehouse: "WAREHOUSE 4 - JENECA", status: "AVAILABLE", dateAdded: "2026-10-01", lastRef: "INITIAL SEED" },
+
+        // Pre-transacted historical serials (SOLD / DEFECTIVE)
+        { serial: "BINTF260601511", sku: "[OVDSF11] OVTABLEFAN", warehouse: "WAREHOUSE 1 - HUB", status: "SOLD", dateAdded: "2026-09-25", lastRef: "DR0316851" },
+        { serial: "HS202401012199", sku: "[OVHS221] OVLH420XR", warehouse: "WAREHOUSE 2 - POLILIO", status: "SOLD", dateAdded: "2026-09-25", lastRef: "DR0316852" },
+        { serial: "84012629307801", sku: "[SKDSF13] SKDESKFAN", warehouse: "WAREHOUSE 1 - HUB", status: "SOLD", dateAdded: "2026-09-25", lastRef: "DR0316854" },
+        { serial: "3344716037601", sku: "[SKLPC24] SKPRO400", warehouse: "WAREHOUSE 3 - PANUKULAN", status: "SOLD", dateAdded: "2026-09-25", lastRef: "DR0275082" },
+        { serial: "ECO01065101", sku: "[BLCKS11] BL SAFI", warehouse: "WAREHOUSE 4 - JENECA", status: "SOLD", dateAdded: "2026-09-25", lastRef: "DR0275079" },
+        { serial: "BNTF260702026", sku: "[OVDSF11] OVTABLEFAN", warehouse: "WAREHOUSE 1 - HUB", status: "DEFECTIVE", dateAdded: "2026-09-15", lastRef: "CST-CBINFA1-2026-001" },
+        { serial: "BINTF260601604", sku: "[OVDSF11] OVTABLEFAN", warehouse: "WAREHOUSE 1 - HUB", status: "SOLD", dateAdded: "2026-09-20", lastRef: "REPLACED CST-CBINFA1-2026-001" }
+      ],
+      sales: [
+        {
+          id: "SL-1001",
+          date: "2026-10-12",
+          sku: "[OVDSF11] OVTABLEFAN",
+          serial: "BINTF260601511",
+          dr: "DR0316851",
+          so: "SO-8841",
+          solarista: "DANILO RENDAL",
+          client: "MARIA SANTOS",
+          branch: "CBINFA1",
+          status: "DONE",
+          validatedDate: "2026-10-12",
+          remarks: "Delivered & validated same day"
+        },
+        {
+          id: "SL-1002",
+          date: "2026-10-14",
+          sku: "[OVHS221] OVLH420XR",
+          serial: "HS202401012199",
+          dr: "DR0316852",
+          so: "SO-8842",
+          solarista: "MA.JOAN GARILLO",
+          client: "ROBERTO REYES",
+          branch: "CAPOL1",
+          status: "DONE",
+          validatedDate: "2026-10-15",
+          remarks: "Polilio island dispatch"
+        },
+        {
+          id: "SL-1003",
+          date: "2026-10-18",
+          sku: "[SKDSF13] SKDESKFAN",
+          serial: "84012629307801",
+          dr: "DR0316854",
+          so: "SO-8849",
+          solarista: "JESSICA PARDALES",
+          client: "ELENA CRUZ",
+          branch: "CAINFA",
+          status: "PENDING",
+          validatedDate: "",
+          remarks: "Awaiting signed DO copy"
+        },
+        {
+          id: "SL-1004",
+          date: "2026-10-20",
+          sku: "[SKLPC24] SKPRO400",
+          serial: "3344716037601",
+          dr: "DR0275082",
+          so: "SO-8855",
+          solarista: "JEDIDIA GEMUEL DATILES",
+          client: "ANTONIO BAUTISTA",
+          branch: "CAPAN1",
+          status: "DONE",
+          validatedDate: "2026-10-20",
+          remarks: ""
+        },
+        {
+          id: "SL-1005",
+          date: "2026-10-22",
+          sku: "[BLCKS11] BL SAFI",
+          serial: "ECO01065101",
+          dr: "DR0275079",
+          so: "SO-8860",
+          solarista: "JENECA ANDRIE FERNANDEZ",
+          client: "JOSEFINA MENDOZA",
+          branch: "CBINFA3",
+          status: "PENDING",
+          validatedDate: "",
+          remarks: "For DO encoding"
+        }
+      ],
+      iwtfs: [
+        {
+          id: "TR-2001",
+          dateTransfer: "2026-10-15",
+          dateReceived: "2026-10-16",
+          iwtfNo: "IWTF-2026-041",
+          rrNo: "RR-1102",
+          logtech: "MV POLILIO EXPRESS",
+          sku: "[OVDSF11] OVTABLEFAN",
+          serial: "BINTF260402097",
+          fromWh: "WAREHOUSE 1 - HUB",
+          toWh: "WAREHOUSE 2 - POLILIO",
+          status: "RECEIVED",
+          remarks: "Received in good condition"
+        }
+      ],
+      warranties: [
+        {
+          id: "WR-3001",
+          cstDate: "2026-10-10",
+          purchaseDate: "2026-08-14",
+          cstNo: "CST-CBINFA1-2026-001",
+          sku: "[OVDSF11] OVTABLEFAN",
+          defectiveSerial: "BNTF260702026",
+          replacementSerial: "BINTF260601604",
+          solarista: "DANILO RENDAL",
+          refDocs: "RMA-0091",
+          client: "DIOCO RONALYN",
+          branch: "CBINFA1",
+          replaceDate: "2026-10-11",
+          status: "REPLACED"
+        }
+      ],
+      marketing: [
+        {
+          id: "MK-4001",
+          date: "2026-10-05",
+          iafNo: "IAF-2026-003",
+          refDocs: "PROMO-Q4-SOLZ",
+          sku: "[OVMNTRCH] OMNI MINI TORCH KEYCHAIN",
+          serial: "MNT260100991",
+          pic: "CEEJAY REVILLAME",
+          remarks: "Infanta Town Plaza Roadshow Demo"
+        }
+      ],
+      hicsActualCounts: {},
+      logs: [
+        { timestamp: "2026-10-01 08:00", type: "INBOUND", sku: "[SKDSF13] SKDESKFAN", serial: "84012629307836", from: "SUPPLIER", to: "WAREHOUSE 1 - HUB", ref: "INITIAL SEED" },
+        { timestamp: "2026-10-11 14:20", type: "WARRANTY SWAP", sku: "[OVDSF11] OVTABLEFAN", serial: "BINTF260601604", from: "WAREHOUSE 1 - HUB", to: "DIOCO RONALYN", ref: "CST-CBINFA1-2026-001" },
+        { timestamp: "2026-10-12 16:45", type: "SALE", sku: "[OVDSF11] OVTABLEFAN", serial: "BINTF260601511", from: "WAREHOUSE 1 - HUB", to: "MARIA SANTOS (CBINFA1)", ref: "DR0316851" },
+        { timestamp: "2026-10-16 10:15", type: "IWTF RECEIVED", sku: "[OVDSF11] OVTABLEFAN", serial: "BINTF260402097", from: "WAREHOUSE 1 - HUB", to: "WAREHOUSE 2 - POLILIO", ref: "IWTF-2026-041" }
+      ]
+    };
+
+    // =========================================================================
+    // 2. STATE MANAGEMENT & PERSISTENCE
+    // =========================================================================
+    let appState = loadState();
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          return JSON.parse(raw);
+        }
+      } catch (e) {
+        console.error("Failed to load LocalStorage:", e);
+      }
+      const fresh = JSON.parse(JSON.stringify(INITIAL_SEED_DATA));
+      saveState(fresh);
+      return fresh;
+    }
+
+    function saveState(stateToSave = appState) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+      } catch (e) {
+        console.error("Failed to save LocalStorage:", e);
+      }
+    }
+
+    function addLogEntry(type, sku, serial, from, to, ref) {
+      const now = new Date();
+      const ts = now.toISOString().slice(0, 16).replace('T', ' ');
+      appState.logs.unshift({ timestamp: ts, type, sku, serial, from, to, ref });
+    }
+
+    // =========================================================================
+    // 3. HELPER UTILITIES (Dates, Week #, KPI, Toasts)
+    // =========================================================================
+    function todayISO() {
+      return new Date().toISOString().split('T')[0];
+    }
+
+    function getISOWeek(dateStr) {
+      if (!dateStr) return "-";
+      const d = new Date(dateStr + "T00:00:00");
+      if (isNaN(d)) return "-";
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      return "W" + Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    }
+
+    function calculateDOKpi(saleDate, validatedDate, status) {
+      if (status !== "DONE" || !saleDate || !validatedDate) {
+        return { days: null, compliance: "PENDING" };
+      }
+      const d1 = new Date(saleDate + "T00:00:00");
+      const d2 = new Date(validatedDate + "T00:00:00");
+      const diffDays = Math.max(0, Math.round((d2 - d1) / (1000 * 60 * 60 * 24)));
+      return {
+        days: diffDays,
+        compliance: diffDays <= 1 ? "YES" : "NO"
+      };
+    }
+
+    function showToast(message, type = "success") {
+      const container = document.getElementById("toast-container");
+      const colors = {
+        success: "bg-slate-900 text-white border-emerald-500",
+        error: "bg-rose-950 text-rose-100 border-rose-500",
+        info: "bg-indigo-950 text-indigo-100 border-indigo-400"
+      };
+      const el = document.createElement("div");
+      el.className = `pointer-events-auto px-4 py-3 rounded-xl border-l-4 shadow-xl text-xs font-medium flex items-center justify-between gap-3 transition-all ${colors[type] || colors.success}`;
+      el.innerHTML = `<span>${message}</span>`;
+      container.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = "0";
+        setTimeout(() => el.remove(), 300);
+      }, 3200);
+    }
+
+    function playBeep(success = true) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = success ? "sine" : "sawtooth";
+        osc.frequency.setValueAtTime(success ? 880 : 220, ctx.currentTime);
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + (success ? 0.12 : 0.25));
+      } catch (e) {}
+    }
+
+    // =========================================================================
+    // 4. NAVIGATION & INITIALIZATION
+    // =========================================================================
+    const TAB_TITLES = {
+      dashboard: "Dashboard & Consolidated Inventory",
+      warehouses: "Warehouse Serial Stock Monitoring",
+      sales: "Sales & D.O. Validation",
+      iwtf: "Inter-Warehouse Transfer (IWTF)",
+      warranty: "Warranty & Unit Replacement",
+      marketing: "Marketing & Promo Issuance",
+      hics: "HICS Physical Count Reconciliation",
+      logs: "Movement Audit Log & Master Data"
+    };
+
+    function switchTab(tabId) {
+      document.querySelectorAll(".tab-view").forEach(sec => sec.classList.add("hidden"));
+      const target = document.getElementById("view-" + tabId);
+      if (target) target.classList.remove("hidden");
+
+      document.querySelectorAll(".nav-btn").forEach(btn => {
+        const active = btn.dataset.tab === tabId;
+        btn.className = `nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
+          active
+            ? "bg-emerald-500/15 text-emerald-400 font-semibold border border-emerald-500/20"
+            : "text-slate-400 hover:text-white hover:bg-slate-800/70"
+        }`;
+      });
+
+      document.getElementById("page-title").textContent = TAB_TITLES[tabId] || "WH-QUE4INFA";
+      toggleSidebar(false);
+      refreshAllViews();
+    }
+
+    function toggleSidebar(open) {
+      const sb = document.getElementById("sidebar");
+      const bd = document.getElementById("sidebar-backdrop");
+      if (open) {
+        sb.classList.remove("-translate-x-full");
+        bd.classList.remove("hidden");
+      } else {
+        sb.classList.add("-translate-x-full");
+        bd.classList.add("hidden");
+      }
+    }
+
+    function populateDropdowns() {
+      const whOptions = appState.warehouses.map(w => `<option value="${w}">${w}</option>`).join("");
+      const skuOptions = appState.skus.map(s => `<option value="${s.code}">${s.code}</option>`).join("");
+      const branchOptions = appState.branches.map(b => `<option value="${b}">${b}</option>`).join("");
+      const solOptions = appState.solaristas.map(s => `<option value="${s}">${s}</option>`).join("");
+
+      // Filters
+      document.getElementById("wh-filter-location").innerHTML = `<option value="ALL">All Warehouses</option>` + whOptions;
+      document.getElementById("wh-filter-sku").innerHTML = `<option value="ALL">All SKU Codes</option>` + skuOptions;
+
+      // Forms
+      document.getElementById("stockin-warehouse").innerHTML = whOptions;
+      document.getElementById("stockin-sku").innerHTML = skuOptions;
+
+      document.getElementById("sale-sku").innerHTML = `<option value="">-- Select SKU (or Scan Serial) --</option>` + skuOptions;
+      document.getElementById("sale-solarista").innerHTML = solOptions;
+      document.getElementById("sale-branch").innerHTML = branchOptions;
+
+      document.getElementById("iwtf-from").innerHTML = whOptions;
+      document.getElementById("iwtf-to").innerHTML = whOptions;
+      if (appState.warehouses.length > 1) {
+        document.getElementById("iwtf-to").selectedIndex = 1;
+      }
+      document.getElementById("iwtf-sku").innerHTML = `<option value="">-- All / Select SKU --</option>` + skuOptions;
+
+      document.getElementById("war-sku").innerHTML = `<option value="">-- Select SKU --</option>` + skuOptions;
+      document.getElementById("war-solarista").innerHTML = solOptions;
+      document.getElementById("war-branch").innerHTML = branchOptions;
+
+      document.getElementById("mkt-sku").innerHTML = `<option value="">-- Select SKU --</option>` + skuOptions;
+
+      // Refresh available serial datalists
+      populateAvailableSerialsDropdown("sale-serial", "");
+      populateAvailableSerialsDropdown("war-rep-serial", "");
+      populateAvailableSerialsDropdown("mkt-serial", "");
+      refreshIwtfSerialList();
+    }
+
+    function populateAvailableSerialsDropdown(inputId, skuFilter) {
+      const listEl = document.getElementById(inputId + "-list");
+      if (!listEl) return;
+      const avail = appState.serials.filter(s => s.status === "AVAILABLE" && (!skuFilter || s.sku === skuFilter));
+      listEl.innerHTML = avail.map(s => `<option value="${s.serial}">${s.sku} (${s.warehouse})</option>`).join("");
+    }
+
+    function refreshIwtfSerialList() {
+      const fromWh = document.getElementById("iwtf-from").value;
+      const skuFilter = document.getElementById("iwtf-sku").value;
+      const listEl = document.getElementById("iwtf-serial-list");
+      const avail = appState.serials.filter(s =>
+        s.status === "AVAILABLE" &&
+        (!fromWh || s.warehouse === fromWh) &&
+        (!skuFilter || s.sku === skuFilter)
+      );
+      listEl.innerHTML = avail.map(s => `<option value="${s.serial}">${s.sku}</option>`).join("");
+    }
+
+    // Auto-fill SKU when serial is scanned or typed
+    function autoFillSaleSkuFromSerial(serialVal) {
+      const found = appState.serials.find(s => s.serial.toLowerCase() === serialVal.trim().toLowerCase());
+      if (found) {
+        document.getElementById("sale-sku").value = found.sku;
+      }
+    }
+
+    function autoFillIwtfFromSerial(serialVal) {
+      const found = appState.serials.find(s => s.serial.toLowerCase() === serialVal.trim().toLowerCase());
+      if (found) {
+        document.getElementById("iwtf-sku").value = found.sku;
+        document.getElementById("iwtf-from").value = found.warehouse;
+      }
+    }
+
+    function autoFillWarrantySku(serialVal) {
+      const found = appState.serials.find(s => s.serial.toLowerCase() === serialVal.trim().toLowerCase());
+      if (found) {
+        document.getElementById("war-sku").value = found.sku;
+      }
+    }
+
+    function autoFillMktSku(serialVal) {
+      const found = appState.serials.find(s => s.serial.toLowerCase() === serialVal.trim().toLowerCase());
+      if (found) {
+        document.getElementById("mkt-sku").value = found.sku;
+      }
+    }
+
+    // =========================================================================
+    // 5. RENDERING VIEWS
+    // =========================================================================
+    function refreshAllViews() {
+      const pendingDO = appState.sales.filter(s => s.status === "PENDING").length;
+      const inTransit = appState.iwtfs.filter(t => t.status === "IN TRANSIT").length;
+      document.getElementById("badge-pending-do").textContent = pendingDO;
+      document.getElementById("badge-intransit").textContent = inTransit;
+
+      renderDashboard();
+      renderConsolidatedTable();
+      renderWarehouseSerials();
+      renderSales();
+      renderIWTF();
+      renderWarranty();
+      renderMarketing();
+      renderHICS();
+      renderLogs();
+      lucide.createIcons();
+    }
+
+    function renderDashboard() {
+      const totalAvail = appState.serials.filter(s => s.status === "AVAILABLE").length;
+      const totalSold = appState.sales.length;
+      const pendingDO = appState.sales.filter(s => s.status === "PENDING").length;
+      const inTransit = appState.iwtfs.filter(t => t.status === "IN TRANSIT").length;
+      const totalWarranty = appState.warranties.length;
+
+      const kpis = [
+        { label: "Total Available Stock", value: totalAvail, sub: "Across 7 Warehouses", icon: "package-check", color: "emerald" },
+        { label: "Total Sales Recorded", value: totalSold, sub: "Serialized Dispatches", icon: "shopping-bag", color: "slate" },
+        { label: "Pending DO Validation", value: pendingDO, sub: "Requires DO Encoding", icon: "clock", color: "amber" },
+        { label: "IWTF In-Transit", value: inTransit, sub: "Active Transfers", icon: "truck", color: "indigo" },
+        { label: "Warranty Replacements", value: totalWarranty, sub: "CST Claims Logged", icon: "shield-alert", color: "rose" }
+      ];
+
+      document.getElementById("dashboard-kpis").innerHTML = kpis.map(k => `
+        <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex items-center justify-between">
+          <div>
+            <p class="text-xs font-medium text-slate-500">${k.label}</p>
+            <p class="text-2xl font-extrabold text-slate-900 mt-1">${k.value}</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">${k.sub}</p>
+          </div>
+          <div class="w-11 h-11 rounded-xl bg-${k.color}-50 text-${k.color}-600 flex items-center justify-center">
+            <i data-lucide="${k.icon}" class="w-5 h-5"></i>
+          </div>
+        </div>
+      `).join("");
+
+      // Warehouse Summary Cards
+      document.getElementById("warehouse-summary-cards").innerHTML = appState.warehouses.map(wh => {
+        const count = appState.serials.filter(s => s.warehouse === wh && s.status === "AVAILABLE").length;
+        const shortName = wh.replace("WAREHOUSE ", "WH");
+        return `
+          <div onclick="document.getElementById('wh-filter-location').value='${wh}'; switchTab('warehouses');" class="p-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-emerald-50/60 hover:border-emerald-300 transition-all cursor-pointer">
+            <p class="text-[11px] font-bold text-slate-600 truncate" title="${wh}">${shortName}</p>
+            <p class="text-xl font-extrabold text-slate-900 mt-1">${count}</p>
+            <p class="text-[10px] text-emerald-700 font-medium">Available</p>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderConsolidatedTable() {
+      const filterText = (document.getElementById("consolidated-filter")?.value || "").toLowerCase();
+      const tbody = document.getElementById("consolidated-tbody");
+      const whTotals = new Array(appState.warehouses.length).fill(0);
+      let grandTotal = 0;
+
+      const rows = appState.skus
+        .filter(s => s.code.toLowerCase().includes(filterText) || s.product.toLowerCase().includes(filterText))
+        .map(skuObj => {
+          let rowTotal = 0;
+          const cells = appState.warehouses.map((wh, idx) => {
+            const cnt = appState.serials.filter(
+              item => item.sku === skuObj.code && item.warehouse === wh && item.status === "AVAILABLE"
+            ).length;
+            whTotals[idx] += cnt;
+            rowTotal += cnt;
+            return `<td class="py-2.5 px-3 text-center ${cnt > 0 ? 'font-semibold text-slate-800' : 'text-slate-300'}">${cnt}</td>`;
+          }).join("");
+          grandTotal += rowTotal;
+
+          return `
+            <tr class="hover:bg-slate-50/80 transition-colors">
+              <td class="py-2.5 px-4 font-semibold text-slate-900 sticky left-0 bg-white">${skuObj.code}</td>
+              ${cells}
+              <td class="py-2.5 px-4 text-right font-bold bg-emerald-50/40 ${rowTotal > 0 ? 'text-emerald-700' : 'text-slate-400'}">${rowTotal}</td>
+            </tr>
+          `;
+        }).join("");
+
+      const footerRow = `
+        <tr class="bg-slate-100 font-extrabold text-slate-900 border-t-2 border-slate-300">
+          <td class="py-3 px-4 sticky left-0 bg-slate-100">GRAND TOTAL</td>
+          ${whTotals.map(t => `<td class="py-3 px-3 text-center">${t}</td>`).join("")}
+          <td class="py-3 px-4 text-right bg-emerald-100 text-emerald-900">${grandTotal}</td>
+        </tr>
+      `;
+
+      tbody.innerHTML = rows + footerRow;
+    }
+
+    function renderWarehouseSerials() {
+      const whFilter = document.getElementById("wh-filter-location").value;
+      const skuFilter = document.getElementById("wh-filter-sku").value;
+      const statusFilter = document.getElementById("wh-filter-status").value;
+      const searchFilter = document.getElementById("wh-filter-search").value.toLowerCase().trim();
+
+      const filtered = appState.serials.filter(item => {
+        if (whFilter !== "ALL" && item.warehouse !== whFilter) return false;
+        if (skuFilter !== "ALL" && item.sku !== skuFilter) return false;
+        if (statusFilter !== "ALL" && item.status !== statusFilter) return false;
+        if (searchFilter && !item.serial.toLowerCase().includes(searchFilter) && !item.sku.toLowerCase().includes(searchFilter)) return false;
+        return true;
+      });
+
+      const statusBadges = {
+        "AVAILABLE": "bg-emerald-100 text-emerald-800",
+        "SOLD": "bg-slate-200 text-slate-700",
+        "IN TRANSIT": "bg-indigo-100 text-indigo-800",
+        "DEFECTIVE": "bg-rose-100 text-rose-800",
+        "MARKETING": "bg-purple-100 text-purple-800"
+      };
+
+      const tbody = document.getElementById("warehouse-serials-tbody");
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400">No serialized units match your current filters.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(item => `
+        <tr class="hover:bg-slate-50 transition-colors">
+          <td class="py-2.5 px-4 font-mono font-bold text-slate-900">${item.serial}</td>
+          <td class="py-2.5 px-4 font-medium text-slate-700">${item.sku}</td>
+          <td class="py-2.5 px-4 text-slate-600">${item.warehouse}</td>
+          <td class="py-2.5 px-4">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${statusBadges[item.status] || 'bg-slate-100'}">${item.status}</span>
+          </td>
+          <td class="py-2.5 px-4 text-slate-500">${item.dateAdded || '-'}</td>
+          <td class="py-2.5 px-4 text-slate-500">${item.lastRef || '-'}</td>
+          <td class="py-2.5 px-4 text-right">
+            <button onclick="lookupSerial('${item.serial}')" class="text-emerald-700 hover:underline font-semibold cursor-pointer">History</button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function renderSales() {
+      // Solarista Summary
+      const solCards = appState.solaristas.map(sol => {
+        const solSales = appState.sales.filter(s => s.solarista === sol);
+        const done = solSales.filter(s => s.status === "DONE").length;
+        const pending = solSales.filter(s => s.status === "PENDING").length;
+        const total = solSales.length;
+        const rate = total > 0 ? Math.round((done / total) * 100) : 100;
+        return `
+          <div class="p-3 rounded-xl border border-slate-200 bg-slate-50/60 flex items-center justify-between">
+            <div class="min-w-0 pr-2">
+              <p class="font-bold text-slate-800 text-xs truncate" title="${sol}">${sol}</p>
+              <p class="text-[11px] text-slate-500 mt-0.5">Done: <strong class="text-emerald-700">${done}</strong> • Pending: <strong class="text-amber-600">${pending}</strong></p>
+            </div>
+            <span class="px-2 py-1 rounded-lg text-[11px] font-extrabold ${rate >= 80 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${rate}%</span>
+          </div>
+        `;
+      }).join("");
+      document.getElementById("solarista-summary-cards").innerHTML = solCards;
+
+      // Sales Table
+      const tbody = document.getElementById("sales-tbody");
+      tbody.innerHTML = appState.sales.map(s => {
+        const kpi = calculateDOKpi(s.date, s.validatedDate, s.status);
+        const week = getISOWeek(s.date);
+        return `
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="py-2.5 px-3">
+              <div class="font-semibold text-slate-800">${s.date}</div>
+              <div class="text-[10px] text-slate-400">${week}</div>
+            </td>
+            <td class="py-2.5 px-3 font-medium text-slate-800">${s.sku}</td>
+            <td class="py-2.5 px-3 font-mono font-bold text-slate-900">${s.serial}</td>
+            <td class="py-2.5 px-3">
+              <div class="font-semibold text-slate-800">${s.dr}</div>
+              <div class="text-[10px] text-slate-400">${s.so || '-'}</div>
+            </td>
+            <td class="py-2.5 px-3 text-slate-700">${s.solarista}</td>
+            <td class="py-2.5 px-3">
+              <div class="font-semibold text-slate-800">${s.client}</div>
+              <div class="text-[10px] font-bold text-emerald-700">${s.branch}</div>
+            </td>
+            <td class="py-2.5 px-3">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${s.status === 'DONE' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${s.status}</span>
+              ${s.validatedDate ? `<div class="text-[10px] text-slate-400 mt-0.5">${s.validatedDate}</div>` : ''}
+            </td>
+            <td class="py-2.5 px-3 text-center">
+              ${kpi.compliance === 'PENDING'
+                ? `<span class="text-slate-400 text-[11px]">-</span>`
+                : `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold ${kpi.compliance === 'YES' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}">${kpi.days}d (${kpi.compliance})</span>`
+              }
+            </td>
+            <td class="py-2.5 px-3 text-right">
+              ${s.status === 'PENDING'
+                ? `<button onclick="markSaleDODone('${s.id}')" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold cursor-pointer">Mark DO Done</button>`
+                : `<span class="text-[11px] text-slate-400">Validated</span>`
+              }
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function renderIWTF() {
+      const tbody = document.getElementById("iwtf-tbody");
+      if (appState.iwtfs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-400">No IWTF transfers recorded yet.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = appState.iwtfs.map(t => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-2.5 px-3 font-medium text-slate-800">${t.dateTransfer}</td>
+          <td class="py-2.5 px-3">
+            <div class="font-bold text-slate-900">${t.iwtfNo}</div>
+            <div class="text-[10px] text-slate-400">${t.rrNo || '-'}</div>
+          </td>
+          <td class="py-2.5 px-3 font-medium text-slate-800">${t.sku}</td>
+          <td class="py-2.5 px-3 font-mono font-bold text-slate-900">${t.serial}</td>
+          <td class="py-2.5 px-3">
+            <span class="text-slate-600">${t.fromWh.replace('WAREHOUSE ', 'WH')}</span>
+            <span class="mx-1 text-indigo-500 font-bold">→</span>
+            <span class="font-semibold text-slate-900">${t.toWh.replace('WAREHOUSE ', 'WH')}</span>
+          </td>
+          <td class="py-2.5 px-3 text-slate-600">${t.logtech || '-'}</td>
+          <td class="py-2.5 px-3">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${t.status === 'RECEIVED' ? 'bg-emerald-100 text-emerald-800' : 'bg-indigo-100 text-indigo-800'}">${t.status}</span>
+            ${t.dateReceived ? `<div class="text-[10px] text-slate-400 mt-0.5">${t.dateReceived}</div>` : ''}
+          </td>
+          <td class="py-2.5 px-3 text-right">
+            ${t.status === 'IN TRANSIT'
+              ? `<button onclick="confirmIwtfReceived('${t.id}')" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-semibold cursor-pointer">Confirm Received</button>`
+              : `<span class="text-[11px] text-slate-400">Completed</span>`
+            }
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function renderWarranty() {
+      const tbody = document.getElementById("warranty-tbody");
+      tbody.innerHTML = appState.warranties.map(w => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-2.5 px-3">
+            <div class="font-bold text-slate-900">${w.cstNo}</div>
+            <div class="text-[10px] text-slate-400">Opened: ${w.cstDate}</div>
+          </td>
+          <td class="py-2.5 px-3 font-medium text-slate-800">${w.sku}</td>
+          <td class="py-2.5 px-3 font-mono text-rose-700 font-semibold">${w.defectiveSerial}</td>
+          <td class="py-2.5 px-3 font-mono text-emerald-700 font-bold">${w.replacementSerial}</td>
+          <td class="py-2.5 px-3">
+            <div class="font-semibold text-slate-800">${w.client}</div>
+            <div class="text-[10px] text-slate-500">${w.branch}</div>
+          </td>
+          <td class="py-2.5 px-3 text-slate-700">${w.solarista}</td>
+          <td class="py-2.5 px-3">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${w.status === 'REPLACED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${w.status}</span>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function renderMarketing() {
+      const tbody = document.getElementById("marketing-tbody");
+      tbody.innerHTML = appState.marketing.map(m => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-2.5 px-4 font-medium text-slate-800">${m.date}</td>
+          <td class="py-2.5 px-4 font-bold text-purple-800">${m.iafNo}</td>
+          <td class="py-2.5 px-4 font-medium text-slate-800">${m.sku}</td>
+          <td class="py-2.5 px-4 font-mono font-bold text-slate-900">${m.serial}</td>
+          <td class="py-2.5 px-4 text-slate-700">${m.pic}</td>
+          <td class="py-2.5 px-4 text-slate-500">${m.refDocs ? `[${m.refDocs}] ` : ''}${m.remarks || '-'}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderHICS() {
+      const tbody = document.getElementById("hics-tbody");
+      let totalSys = 0;
+      let totalAct = 0;
+
+      tbody.innerHTML = appState.skus.map(s => {
+        const sysInv = appState.serials.filter(item => item.sku === s.code && item.status === "AVAILABLE").length;
+        const actual = appState.hicsActualCounts[s.code] !== undefined ? Number(appState.hicsActualCounts[s.code]) : sysInv;
+        const variance = actual - sysInv;
+        totalSys += sysInv;
+        totalAct += actual;
+
+        let badge = `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">OK</span>`;
+        if (variance > 0) {
+          badge = `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">OVERSTOCK (+${variance})</span>`;
+        } else if (variance < 0) {
+          badge = `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">SHORT (${variance})</span>`;
+        }
+
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-semibold text-slate-800">${s.product}</td>
+            <td class="py-2.5 px-4 font-mono text-slate-600">${s.code}</td>
+            <td class="py-2.5 px-4 text-center font-bold text-slate-900">${sysInv}</td>
+            <td class="py-2.5 px-4 text-center">
+              <input
+                type="number"
+                min="0"
+                value="${actual}"
+                onchange="updateHicsCount('${s.code}', this.value)"
+                class="w-24 px-2 py-1 text-center font-bold border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              />
+            </td>
+            <td class="py-2.5 px-4 text-center font-bold ${variance === 0 ? 'text-slate-400' : variance > 0 ? 'text-blue-700' : 'text-rose-700'}">
+              ${variance > 0 ? '+' + variance : variance}
+            </td>
+            <td class="py-2.5 px-4 text-center">${badge}</td>
+          </tr>
+        `;
+      }).join("");
+
+      const totalVar = totalAct - totalSys;
+      document.getElementById("hics-tfoot").innerHTML = `
+        <tr>
+          <td colspan="2" class="py-3 px-4">TOTAL RECONCILIATION</td>
+          <td class="py-3 px-4 text-center">${totalSys}</td>
+          <td class="py-3 px-4 text-center">${totalAct}</td>
+          <td class="py-3 px-4 text-center ${totalVar === 0 ? 'text-emerald-700' : totalVar > 0 ? 'text-blue-700' : 'text-rose-700'}">${totalVar > 0 ? '+' + totalVar : totalVar}</td>
+          <td class="py-3 px-4 text-center">${totalVar === 0 ? 'BALANCED' : 'VARIANCE DETECTED'}</td>
+        </tr>
+      `;
+    }
+
+    function renderLogs() {
+      const tbody = document.getElementById("logs-tbody");
+      tbody.innerHTML = appState.logs.map(l => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-2.5 px-4 font-mono text-slate-500">${l.timestamp}</td>
+          <td class="py-2.5 px-4 font-bold text-slate-800">${l.type}</td>
+          <td class="py-2.5 px-4 text-slate-700">${l.sku}</td>
+          <td class="py-2.5 px-4 font-mono font-bold text-slate-900">${l.serial}</td>
+          <td class="py-2.5 px-4 text-slate-600">${l.from}</td>
+          <td class="py-2.5 px-4 text-slate-600">${l.to}</td>
+          <td class="py-2.5 px-4 font-medium text-emerald-700">${l.ref}</td>
+        </tr>
+      `).join("");
+    }
+
+    // =========================================================================
+    // 6. TRANSACTION HANDLERS
+    // =========================================================================
+    function openStockInModal() {
+      document.getElementById("stockin-modal").classList.remove("hidden");
+      document.getElementById("stockin-modal").classList.add("flex");
+    }
+
+    function closeStockInModal() {
+      document.getElementById("stockin-modal").classList.add("hidden");
+      document.getElementById("stockin-modal").classList.remove("flex");
+    }
+
+    function processStockIn() {
+      const warehouse = document.getElementById("stockin-warehouse").value;
+      const sku = document.getElementById("stockin-sku").value;
+      const ref = document.getElementById("stockin-ref").value.trim() || "INBOUND-" + todayISO();
+      const rawLines = document.getElementById("stockin-serials").value
+        .split(/\r?\n/)
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      if (rawLines.length === 0) {
+        showToast("Please enter or scan at least one serial number.", "error");
+        return;
+      }
+
+      let addedCount = 0;
+      let duplicateCount = 0;
+
+      rawLines.forEach(sn => {
+        const exists = appState.serials.some(item => item.serial.toLowerCase() === sn.toLowerCase());
+        if (exists) {
+          duplicateCount++;
+        } else {
+          appState.serials.unshift({
+            serial: sn,
+            sku,
+            warehouse,
+            status: "AVAILABLE",
+            dateAdded: todayISO(),
+            lastRef: ref
+          });
+          addLogEntry("INBOUND", sku, sn, "SUPPLIER / RECEIVING", warehouse, ref);
+          addedCount++;
+        }
+      });
+
+      saveState();
+      populateDropdowns();
+      refreshAllViews();
+      document.getElementById("stockin-serials").value = "";
+      closeStockInModal();
+
+      if (addedCount > 0) {
+        showToast(`Added ${addedCount} serial(s) to ${warehouse}.${duplicateCount > 0 ? ` (${duplicateCount} duplicates skipped)` : ''}`);
+      } else {
+        showToast(`All ${duplicateCount} serial(s) already exist in the system.`, "error");
+      }
+    }
+
+    function handleAddSale(e) {
+      e.preventDefault();
+      const date = document.getElementById("sale-date").value;
+      const sku = document.getElementById("sale-sku").value;
+      const serial = document.getElementById("sale-serial").value.trim();
+      const dr = document.getElementById("sale-dr").value.trim();
+      const so = document.getElementById("sale-so").value.trim();
+      const solarista = document.getElementById("sale-solarista").value;
+      const client = document.getElementById("sale-client").value.trim().toUpperCase();
+      const branch = document.getElementById("sale-branch").value;
+      const status = document.getElementById("sale-status").value;
+      const validatedDate = status === "DONE" ? (document.getElementById("sale-validated-date").value || date) : "";
+      const remarks = document.getElementById("sale-remarks").value.trim();
+
+      const stockItem = appState.serials.find(s => s.serial.toLowerCase() === serial.toLowerCase());
+      if (!stockItem) {
+        showToast(`Serial # "${serial}" not found in inventory! Stock it in first.`, "error");
+        return;
+      }
+      if (stockItem.status !== "AVAILABLE") {
+        showToast(`Serial # "${serial}" is currently ${stockItem.status} and cannot be sold.`, "error");
+        return;
+      }
+
+      // Deduct / Mark SOLD
+      stockItem.status = "SOLD";
+      stockItem.lastRef = dr;
+
+      appState.sales.unshift({
+        id: "SL-" + Date.now(),
+        date,
+        sku: stockItem.sku,
+        serial: stockItem.serial,
+        dr,
+        so,
+        solarista,
+        client,
+        branch,
+        status,
+        validatedDate,
+        remarks
+      });
+
+      addLogEntry("SALE", stockItem.sku, stockItem.serial, stockItem.warehouse, `${client} (${branch})`, dr);
+      saveState();
+      populateDropdowns();
+      refreshAllViews();
+      e.target.reset();
+      document.getElementById("sale-date").value = todayISO();
+      showToast(`Sale recorded! Serial ${stockItem.serial} deducted from ${stockItem.warehouse}.`);
+    }
+
+    function markSaleDODone(saleId) {
+      const sale = appState.sales.find(s => s.id === saleId);
+      if (!sale) return;
+      sale.status = "DONE";
+      sale.validatedDate = todayISO();
+      saveState();
+      refreshAllViews();
+      showToast(`DO Validation marked DONE for ${sale.dr}.`);
+    }
+
+    function toggleSaleValidatedDate() {
+      const status = document.getElementById("sale-status").value;
+      const dateInput = document.getElementById("sale-validated-date");
+      if (status === "DONE" && !dateInput.value) {
+        dateInput.value = todayISO();
+      }
+    }
+
+    function handleAddIWTF(e) {
+      e.preventDefault();
+      const dateTransfer = document.getElementById("iwtf-date").value;
+      const iwtfNo = document.getElementById("iwtf-number").value.trim();
+      const rrNo = document.getElementById("iwtf-rr").value.trim();
+      const logtech = document.getElementById("iwtf-logtech").value.trim();
+      const fromWh = document.getElementById("iwtf-from").value;
+      const toWh = document.getElementById("iwtf-to").value;
+      const serial = document.getElementById("iwtf-serial").value.trim();
+      const status = document.getElementById("iwtf-status").value;
+      const dateReceived = status === "RECEIVED" ? (document.getElementById("iwtf-received-date").value || dateTransfer) : "";
+      const remarks = document.getElementById("iwtf-remarks").value.trim();
+
+      if (fromWh === toWh) {
+        showToast("Source and destination warehouses cannot be the same.", "error");
+        return;
+      }
+
+      const stockItem = appState.serials.find(s => s.serial.toLowerCase() === serial.toLowerCase());
+      if (!stockItem || stockItem.status !== "AVAILABLE") {
+        showToast(`Serial # "${serial}" is not available for transfer.`, "error");
+        return;
+      }
+
+      if (status === "RECEIVED") {
+        stockItem.warehouse = toWh;
+        stockItem.status = "AVAILABLE";
+        stockItem.lastRef = iwtfNo;
+        addLogEntry("IWTF RECEIVED", stockItem.sku, stockItem.serial, fromWh, toWh, iwtfNo);
+      } else {
+        stockItem.status = "IN TRANSIT";
+        stockItem.lastRef = iwtfNo;
+        addLogEntry("IWTF DISPATCH", stockItem.sku, stockItem.serial, fromWh, toWh, iwtfNo);
+      }
+
+      appState.iwtfs.unshift({
+        id: "TR-" + Date.now(),
+        dateTransfer,
+        dateReceived,
+        iwtfNo,
+        rrNo,
+        logtech,
+        sku: stockItem.sku,
+        serial: stockItem.serial,
+        fromWh,
+        toWh,
+        status,
+        remarks
+      });
+
+      saveState();
+      populateDropdowns();
+      refreshAllViews();
+      e.target.reset();
+      document.getElementById("iwtf-date").value = todayISO();
+      showToast(`IWTF ${iwtfNo} recorded (${status}).`);
+    }
+
+    function confirmIwtfReceived(iwtfId) {
+      const tr = appState.iwtfs.find(t => t.id === iwtfId);
+      if (!tr) return;
+      tr.status = "RECEIVED";
+      tr.dateReceived = todayISO();
+
+      const stockItem = appState.serials.find(s => s.serial === tr.serial);
+      if (stockItem) {
+        stockItem.warehouse = tr.toWh;
+        stockItem.status = "AVAILABLE";
+        stockItem.lastRef = tr.iwtfNo;
+      }
+
+      addLogEntry("IWTF RECEIVED", tr.sku, tr.serial, tr.fromWh, tr.toWh, tr.iwtfNo);
+      saveState();
+      populateDropdowns();
+      refreshAllViews();
+      showToast(`Serial ${tr.serial} received at ${tr.toWh}!`);
+    }
+
+    function handleAddWarranty(e) {
+      e.preventDefault();
+      const cstDate = document.getElementById("war-cst-date").value;
+      const purchaseDate = document.getElementById("war-purchase-date").value;
+      const cstNo = document.getElementById("war-cst").value.trim();
+      const sku = document.getElementById("war-sku").value;
+      const defectiveSerial = document.getElementById("war-def-serial").value.trim();
+      const replacementSerial = document.getElementById("war-rep-serial").value.trim();
+      const solarista = document.getElementById("war-solarista").value;
+      const refDocs = document.getElementById("war-ref").value.trim();
+      const client = document.getElementById("war-client").value.trim().toUpperCase();
+      const branch = document.getElementById("war-branch").value;
+      const replaceDate = document.getElementById("war-replace-date").value || cstDate;
+      const status = document.getElementById("war-status").value;
+
+      const repStock = appState.serials.find(s => s.serial.toLowerCase() === replacementSerial.toLowerCase());
+      if (!repStock || repStock.status !== "AVAILABLE") {
+        showToast(`Replacement Serial "${replacementSerial}" is not available in warehouse stock.`, "error");
+        return;
+      }
+
+      // Deduct replacement unit
+      repStock.status = "SOLD";
+      repStock.lastRef = `REPLACED ${cstNo}`;
+
+      // Mark or log defective unit
+      const defStock = appState.serials.find(s => s.serial.toLowerCase() === defectiveSerial.toLowerCase());
+      if (defStock) {
+        defStock.status = "DEFECTIVE";
+        defStock.lastRef = cstNo;
+      } else {
+        appState.serials.unshift({
+          serial: defectiveSerial,
+          sku: repStock.sku,
+          warehouse: repStock.warehouse,
+          status: "DEFECTIVE",
+          dateAdded: cstDate,
+          lastRef: cstNo
+        });
+      }
+
+      appState.warranties.unshift({
+        id: "WR-" + Date.now(),
+        cstDate,
+        purchaseDate,
+        cstNo,
+        sku: repStock.sku,
+        defectiveSerial,
+        replacementSerial: repStock.serial,
+        solarista,
+        refDocs,
+        client,
+        branch,
+        replaceDate,
+        status
+      });
+
+      addLogEntry("WARRANTY SWAP", repStock.sku, repStock.serial, repStock.warehouse, `${client} (${branch})`, cstNo);
+      saveState();
+      populateDropdowns();
+      refreshAllViews();
+      e.target.reset();
+      document.getElementById("war-cst-date").value = todayISO();
+      showToast(`Warranty swap recorded for ${cstNo}!`);
+    }
+
+    function handleAddMarketing(e) {
+      e.preventDefault();
+      const date = document.getElementById("mkt-date").value;
+      const iafNo = document.getElementById("mkt-iaf").value.trim();
+      const refDocs = document.getElementById("mkt-ref").value.trim();
+      const serial = document.getElementById("mkt-serial").value.trim();
+      const pic = document.getElementById("mkt-pic").value.trim();
+      const remarks = document.getElementById("mkt-remarks").value.trim();
+
+      const stockItem = appState.serials.find(s => s.serial.toLowerCase() === serial.toLowerCase());
+      if (!stockItem || stockItem.status !== "AVAILABLE") {
+        showToast(`Serial # "${serial}" is not available in stock.`, "error");
+        return;
+      }
+
+      stockItem.status = "MARKETING";
+      stockItem.lastRef = iafNo;
+
+      appState.marketing.unshift({
+        id: "MK-" + Date.now(),
+        date,
+        iafNo,
+        refDocs,
+        sku: stockItem.sku,
+        serial: stockItem.serial,
+        pic,
+        remarks
+      });
+
+      addLogEntry("MARKETING RELEASE", stockItem.sku, stockItem.serial, stockItem.warehouse, pic, iafNo);
+      saveState();
+      populateDropdowns();
+      refreshAllViews();
+      e.target.reset();
+      document.getElementById("mkt-date").value = todayISO();
+      showToast(`Marketing release ${iafNo} recorded!`);
+    }
+
+    // =========================================================================
+    // 7. HICS & MASTER DATA
+    // =========================================================================
+    function updateHicsCount(skuCode, val) {
+      appState.hicsActualCounts[skuCode] = Math.max(0, parseInt(val, 10) || 0);
+      saveState();
+      renderHICS();
+    }
+
+    function syncHicsToSystem() {
+      appState.hicsActualCounts = {};
+      saveState();
+      renderHICS();
+      showToast("All HICS actual counts synced to current system inventory.");
+    }
+
+    function addMasterItem(type) {
+      if (type === "sku") {
+        const code = document.getElementById("new-sku-code").value.trim();
+        const product = document.getElementById("new-sku-name").value.trim().toUpperCase();
+        if (!code || !product) return showToast("Enter both SKU Code and Product Name.", "error");
+        appState.skus.push({ code, product });
+        document.getElementById("new-sku-code").value = "";
+        document.getElementById("new-sku-name").value = "";
+      } else if (type === "solarista") {
+        const name = document.getElementById("new-solarista-name").value.trim().toUpperCase();
+        if (!name) return showToast("Enter Solarista name.", "error");
+        appState.solaristas.push(name);
+        document.getElementById("new-solarista-name").value = "";
+      } else if (type === "branch") {
+        const code = document.getElementById("new-branch-code").value.trim().toUpperCase();
+        if (!code) return showToast("Enter Branch code.", "error");
+        appState.branches.push(code);
+        document.getElementById("new-branch-code").value = "";
+      }
+      saveState();
+      populateDropdowns();
+      refreshAllViews();
+      showToast("Master list updated successfully!");
+    }
+
+    function confirmResetSeedData() {
+      document.getElementById("confirm-title").textContent = "Reset System Data?";
+      document.getElementById("confirm-message").textContent = "This will erase your current transactions and restore the original WH-QUE4INFA seed dataset. Are you sure?";
+      const btn = document.getElementById("confirm-yes-btn");
+      btn.onclick = () => {
+        localStorage.removeItem(STORAGE_KEY);
+        appState = loadState();
+        populateDropdowns();
+        refreshAllViews();
+        closeConfirmModal();
+        showToast("System reset to initial WH-QUE4INFA seed data.");
+      };
+      document.getElementById("confirm-modal").classList.remove("hidden");
+      document.getElementById("confirm-modal").classList.add("flex");
+    }
+
+    function closeConfirmModal() {
+      document.getElementById("confirm-modal").classList.add("hidden");
+      document.getElementById("confirm-modal").classList.remove("flex");
+    }
+
+    // =========================================================================
+    // 8. SERIAL LOOKUP & CAMERA BARCODE/QR SCANNER
+    // =========================================================================
+    function lookupSerial(query) {
+      const sn = (query || "").trim();
+      if (!sn) return showToast("Enter or scan a Serial Number first.", "info");
+
+      const item = appState.serials.find(s => s.serial.toLowerCase() === sn.toLowerCase());
+      const history = appState.logs.filter(l => l.serial.toLowerCase() === sn.toLowerCase());
+
+      const body = document.getElementById("lookup-modal-body");
+      if (!item) {
+        body.innerHTML = `
+          <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800">
+            <p class="font-bold">Serial Number "${sn}" Not Found</p>
+            <p class="mt-1">This serial number has not been stocked into WH-QUE4INFA yet.</p>
+          </div>
+        `;
+      } else {
+        body.innerHTML = `
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+            <div class="flex justify-between">
+              <span class="text-slate-500">Serial Number:</span>
+              <span class="font-mono font-bold text-slate-900">${item.serial}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">SKU Code:</span>
+              <span class="font-semibold text-slate-800">${item.sku}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Current Warehouse:</span>
+              <span class="font-semibold text-slate-800">${item.warehouse}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Current Status:</span>
+              <span class="font-extrabold text-emerald-700">${item.status}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Last Ref / Doc:</span>
+              <span class="font-medium text-slate-700">${item.lastRef || '-'}</span>
+            </div>
+          </div>
+          <div>
+            <p class="font-bold text-slate-800 mb-1.5">Audit Movement History</p>
+            ${history.length === 0
+              ? `<p class="text-slate-400">No logged movements yet.</p>`
+              : `<div class="space-y-1.5 max-h-40 overflow-y-auto">
+                  ${history.map(h => `
+                    <div class="p-2 rounded-lg border border-slate-100 bg-white flex justify-between text-[11px]">
+                      <span><strong>${h.type}</strong> (${h.from} → ${h.to})</span>
+                      <span class="text-slate-400">${h.timestamp}</span>
+                    </div>
+                  `).join("")}
+                </div>`
+            }
+          </div>
+        `;
+      }
+
+      document.getElementById("lookup-modal").classList.remove("hidden");
+      document.getElementById("lookup-modal").classList.add("flex");
+    }
+
+    let html5QrScanner = null;
+    let scannerConfig = { mode: 'lookup' };
+    let batchScannedItems = [];
+
+    function openScannerModal(config) {
+      scannerConfig = config || { mode: 'lookup' };
+      batchScannedItems = [];
+      document.getElementById("batch-scan-count").textContent = "0";
+      document.getElementById("batch-scan-list").innerHTML = "";
+
+      const isBatch = scannerConfig.mode === "batch" || scannerConfig.mode === "hics-count";
+      document.getElementById("batch-scan-panel").classList.toggle("hidden", !isBatch);
+      document.getElementById("scanner-title").textContent =
+        scannerConfig.mode === "batch" ? "Batch Inbound Barcode Scanner" :
+        scannerConfig.mode === "hics-count" ? "HICS Scan-to-Count Audit" :
+        "Barcode & QR Serial Scanner";
+
+      document.getElementById("scanner-modal").classList.remove("hidden");
+      document.getElementById("scanner-modal").classList.add("flex");
+      setTimeout(() => document.getElementById("manual-scan-input").focus(), 150);
+
+      startCameraScanner();
+    }
+
+    function startCameraScanner() {
+      const fallbackMsg = document.getElementById("camera-fallback-msg");
+      fallbackMsg.classList.add("hidden");
+
+      if (typeof Html5Qrcode === "undefined") {
+        fallbackMsg.classList.remove("hidden");
+        return;
+      }
+
+      try {
+        html5QrScanner = new Html5Qrcode("qr-reader");
+        html5QrScanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 240, height: 120 } },
+          (decodedText) => {
+            handleScannedCode(decodedText);
+          },
+          () => {}
+        ).catch(() => {
+          fallbackMsg.classList.remove("hidden");
+        });
+      } catch (e) {
+        fallbackMsg.classList.remove("hidden");
+      }
+    }
+
+    function closeScannerModal() {
+      if (html5QrScanner) {
+        html5QrScanner.stop().then(() => {
+          html5QrScanner.clear();
+          html5QrScanner = null;
+        }).catch(() => {
+          html5QrScanner = null;
+        });
+      }
+      document.getElementById("scanner-modal").classList.add("hidden");
+      document.getElementById("scanner-modal").classList.remove("flex");
+    }
+
+    let lastScanTime = 0;
+    let lastScanText = "";
+
+    function handleScannedCode(rawCode) {
+      const code = (rawCode || "").trim();
+      if (!code) return;
+
+      // Prevent rapid duplicate trigger within 1.5s
+      const now = Date.now();
+      if (code === lastScanText && now - lastScanTime < 1500) return;
+      lastScanText = code;
+      lastScanTime = now;
+
+      if (scannerConfig.mode === "lookup") {
+        playBeep(true);
+        closeScannerModal();
+        document.getElementById("global-serial-search").value = code;
+        lookupSerial(code);
+        return;
+      }
+
+      if (scannerConfig.mode === "single") {
+        playBeep(true);
+        if (scannerConfig.targetInputId) {
+          const inp = document.getElementById(scannerConfig.targetInputId);
+          if (inp) inp.value = code;
+        }
+        if (typeof scannerConfig.onScanCallback === "function") {
+          scannerConfig.onScanCallback(code);
+        }
+        showToast(`Scanned serial: ${code}`);
+        closeScannerModal();
+        return;
+      }
+
+      if (scannerConfig.mode === "batch") {
+        if (batchScannedItems.includes(code)) {
+          playBeep(false);
+          showToast(`Duplicate scan ignored: ${code}`, "error");
+          return;
+        }
+        playBeep(true);
+        batchScannedItems.push(code);
+        document.getElementById("batch-scan-count").textContent = batchScannedItems.length;
+        document.getElementById("batch-scan-list").innerHTML = batchScannedItems
+          .map(s => `<div class="px-2 py-0.5 bg-white rounded border border-slate-200">${s}</div>`)
+          .join("");
+
+        if (scannerConfig.targetTextareaId) {
+          const ta = document.getElementById(scannerConfig.targetTextareaId);
+          const existing = ta.value.trim();
+          ta.value = existing ? existing + "\n" + code : code;
+        }
+        return;
+      }
+
+      if (scannerConfig.mode === "hics-count") {
+        if (batchScannedItems.includes(code)) {
+          playBeep(false);
+          showToast(`Already counted in this session: ${code}`, "error");
+          return;
+        }
+        const found = appState.serials.find(s => s.serial.toLowerCase() === code.toLowerCase());
+        if (!found) {
+          playBeep(false);
+          showToast(`Unknown serial: ${code}`, "error");
+          return;
+        }
+        playBeep(true);
+        batchScannedItems.push(code);
+        // Reset HICS counts to 0 on first scan of audit session if not started
+        if (batchScannedItems.length === 1) {
+          appState.skus.forEach(s => appState.hicsActualCounts[s.code] = 0);
+        }
+        appState.hicsActualCounts[found.sku] = (appState.hicsActualCounts[found.sku] || 0) + 1;
+        saveState();
+        renderHICS();
+        document.getElementById("batch-scan-count").textContent = batchScannedItems.length;
+        document.getElementById("batch-scan-list").innerHTML = batchScannedItems
+          .map(s => `<div class="px-2 py-0.5 bg-white rounded border border-slate-200">${s}</div>`)
+          .join("");
+      }
+    }
+
+    function clearBatchScans() {
+      batchScannedItems = [];
+      document.getElementById("batch-scan-count").textContent = "0";
+      document.getElementById("batch-scan-list").innerHTML = "";
+    }
+
+    // =========================================================================
+    // 9. CSV / JSON IMPORT & EXPORT
+    // =========================================================================
+    function downloadFile(filename, content, mime = "text/csv;charset=utf-8;") {
+      const blob = new Blob([content], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function toCSV(headers, rows) {
+      const escape = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+      return [headers.map(escape).join(","), ...rows.map(r => r.map(escape).join(","))].join("\n");
+    }
+
+    function exportConsolidatedCSV() {
+      const headers = ["SKU Code", ...appState.warehouses, "TOTAL AVAILABLE"];
+      const rows = appState.skus.map(s => {
+        let sum = 0;
+        const counts = appState.warehouses.map(wh => {
+          const c = appState.serials.filter(i => i.sku === s.code && i.warehouse === wh && i.status === "AVAILABLE").length;
+          sum += c;
+          return c;
+        });
+        return [s.code, ...counts, sum];
+      });
+      downloadFile(`WH-QUE4INFA_CONSOLIDATED_${todayISO()}.csv`, toCSV(headers, rows));
+    }
+
+    function exportSerialsCSV() {
+      const headers = ["Serial Number", "SKU Code", "Warehouse", "Status", "Date Added", "Last Ref"];
+      const rows = appState.serials.map(s => [s.serial, s.sku, s.warehouse, s.status, s.dateAdded, s.lastRef]);
+      downloadFile(`WH-QUE4INFA_SERIALS_${todayISO()}.csv`, toCSV(headers, rows));
+    }
+
+    function importSerialsCSV(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const lines = e.target.result.split(/\r?\n/).filter(Boolean);
+        let imported = 0;
+        lines.forEach((line, idx) => {
+          const cols = line.split(",").map(c => c.replace(/^"|"$/g, "").trim());
+          if (idx === 0 && cols[0].toLowerCase().includes("serial")) return; // skip header
+          const serial = cols[0];
+          const sku = cols[1] || appState.skus[0].code;
+          const warehouse = appState.warehouses.includes(cols[2]) ? cols[2] : "WAREHOUSE 1 - HUB";
+          if (serial && !appState.serials.some(s => s.serial.toLowerCase() === serial.toLowerCase())) {
+            appState.serials.unshift({
+              serial,
+              sku,
+              warehouse,
+              status: "AVAILABLE",
+              dateAdded: todayISO(),
+              lastRef: "CSV IMPORT"
+            });
+            addLogEntry("CSV IMPORT", sku, serial, "CSV UPLOAD", warehouse, file.name);
+            imported++;
+          }
+        });
+        saveState();
+        populateDropdowns();
+        refreshAllViews();
+        showToast(`Imported ${imported} new serial(s) from CSV.`);
+        event.target.value = "";
+      };
+      reader.readAsText(file);
+    }
+
+    function exportTableCSV(type) {
+      if (type === "sales") {
+        const headers = ["Date", "Week", "SKU Code", "Serial #", "DR #", "SO #", "Solarista", "Client Name", "Branch Code", "Status", "Date Validated", "Remarks"];
+        const rows = appState.sales.map(s => [s.date, getISOWeek(s.date), s.sku, s.serial, s.dr, s.so, s.solarista, s.client, s.branch, s.status, s.validatedDate, s.remarks]);
+        downloadFile(`WH-QUE4INFA_SALES_${todayISO()}.csv`, toCSV(headers, rows));
+      } else if (type === "iwtf") {
+        const headers = ["Date Transfer", "Date Received", "IWTF #", "RR #", "Logtech", "SKU Code", "Serial #", "From Warehouse", "To Warehouse", "Status", "Remarks"];
+        const rows = appState.iwtfs.map(t => [t.dateTransfer, t.dateReceived, t.iwtfNo, t.rrNo, t.logtech, t.sku, t.serial, t.fromWh, t.toWh, t.status, t.remarks]);
+        downloadFile(`WH-QUE4INFA_IWTF_${todayISO()}.csv`, toCSV(headers, rows));
+      } else if (type === "warranty") {
+        const headers = ["Date CST Open", "Date Purchase", "CST #", "SKU Code", "Defective Serial", "Replacement Serial", "Solarista", "Ref Docs", "Client Name", "Branch Code", "Date Replace", "Status"];
+        const rows = appState.warranties.map(w => [w.cstDate, w.purchaseDate, w.cstNo, w.sku, w.defectiveSerial, w.replacementSerial, w.solarista, w.refDocs, w.client, w.branch, w.replaceDate, w.status]);
+        downloadFile(`WH-QUE4INFA_WARRANTY_${todayISO()}.csv`, toCSV(headers, rows));
+      } else if (type === "marketing") {
+        const headers = ["Date", "IAF #", "Ref Docs", "SKU Code", "Serial #", "Person In-Charge", "Remarks"];
+        const rows = appState.marketing.map(m => [m.date, m.iafNo, m.refDocs, m.sku, m.serial, m.pic, m.remarks]);
+        downloadFile(`WH-QUE4INFA_MARKETING_${todayISO()}.csv`, toCSV(headers, rows));
+      } else if (type === "logs") {
+        const headers = ["Timestamp", "Type", "SKU Code", "Serial Number", "From", "To", "Source / Ref #"];
+        const rows = appState.logs.map(l => [l.timestamp, l.type, l.sku, l.serial, l.from, l.to, l.ref]);
+        downloadFile(`WH-QUE4INFA_MOVEMENT_LOG_${todayISO()}.csv`, toCSV(headers, rows));
+      }
+    }
+
+    function exportHicsCSV() {
+      const headers = ["Product Name", "SKU Code", "System END INV", "Actual Count", "Variance", "Remarks"];
+      const rows = appState.skus.map(s => {
+        const sysInv = appState.serials.filter(i => i.sku === s.code && i.status === "AVAILABLE").length;
+        const actual = appState.hicsActualCounts[s.code] !== undefined ? Number(appState.hicsActualCounts[s.code]) : sysInv;
+        const variance = actual - sysInv;
+        const rem = variance === 0 ? "OK" : variance > 0 ? "OVERSTOCK (+)" : "SHORT (-)";
+        return [s.product, s.code, sysInv, actual, variance, rem];
+      });
+      downloadFile(`WH-QUE4INFA_HICS_${todayISO()}.csv`, toCSV(headers, rows));
+    }
+
+    function exportAllJSON() {
+      downloadFile(`WH-QUE4INFA_FULL_BACKUP_${todayISO()}.json`, JSON.stringify(appState, null, 2), "application/json");
+      showToast("Full database backup downloaded!");
+    }
+
+    function importAllJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (!parsed.warehouses || !parsed.serials) throw new Error("Invalid backup format");
+          appState = parsed;
+          saveState();
+          populateDropdowns();
+          refreshAllViews();
+          showToast("Backup restored successfully!");
+        } catch (err) {
+          showToast("Invalid backup JSON file.", "error");
+        }
+        event.target.value = "";
+      };
+      reader.readAsText(file);
+    }
+
+    // =========================================================================
+    // 10. BOOTSTRAP ON LOAD
+    // =========================================================================
+    window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("sale-date").value = todayISO();
+      document.getElementById("iwtf-date").value = todayISO();
+      document.getElementById("war-cst-date").value = todayISO();
+      document.getElementById("mkt-date").value = todayISO();
+
+      populateDropdowns();
+      switchTab("dashboard");
+    });
+  </script>
+</body>
+</html>
